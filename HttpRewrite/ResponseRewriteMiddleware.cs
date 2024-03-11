@@ -1,7 +1,9 @@
-﻿using Microsoft.Azure.Functions.Worker;
+﻿using System.Net;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker.Middleware;
-using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace HttpRewrite
 {
@@ -9,13 +11,19 @@ namespace HttpRewrite
     {
         public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
         {
+            var logger = context.GetLogger<ResponseRewriteMiddleware>();
+            logger.LogInformation($"Running {nameof(ResponseRewriteMiddleware)}...");
+
             var req = await context.GetHttpRequestDataAsync();
 
             var res = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await res.WriteAsJsonAsync(new { Status = "Unauthorized", Message = "Unauthorized access." }, res.StatusCode);
 
-            var invocationResult = context.GetInvocationResult();
+            context.GetInvocationResult().Value = res;
+            return;
 
-            invocationResult.Value = res;
+            // throw new UnauthorizedAccessException("Unauthorized access.");
+            // await next(context);
         }
     }
 }
